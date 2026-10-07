@@ -31,32 +31,30 @@ The preview fills the wrapper, so give it a height (via `className` or its paren
 ## How it works
 
 `components/LivePreview.tsx` loads `components/LivePreviewSandpack.tsx` client-side
-only (`next/dynamic` with `ssr: false`). That component mounts `<Sandpack>` with
-this virtual file system:
+only (`next/dynamic` with `ssr: false`). That component mounts `<Sandpack>` on the
+`react-ts` template, which compiles in Sandpack's **in-browser bundler**: packages are
+fetched pre-bundled from CodeSandbox's CDN, with no `npm install`. (The Node-based
+`vite-react-ts` template ran a full npm install of 150+ packages and a Vite server
+inside the browser on every visit, which took minutes and often failed.)
 
-| File                  | Contents                                                        |
-| --------------------- | --------------------------------------------------------------- |
-| `/App.tsx`            | Renders the entry's default export, else a `*Demo` export, else the first PascalCase component export. The entry is `/Demo.tsx` when there is a demo, otherwise the component |
-| `/Demo.tsx`           | `demoCode`, when provided                                      |
-| `componentPath` file  | `componentCode`, e.g. `/components/ui/pricing-table.tsx`; `/Component.tsx` when there is no demo |
-| `/lib/utils.ts`       | Shadcn `cn()` (`clsx` + `tailwind-merge`)                       |
-| `/styles.css`         | `@tailwind` directives + Shadcn theme CSS variables             |
-| `/tailwind.config.js` | Tailwind v3 config with the Shadcn color tokens                 |
-| `/postcss.config.js`  | Standard `tailwindcss` + `autoprefixer` config                  |
-| `/vite.config.ts`     | `@` → project root alias, and PostCSS plugins passed inline     |
-| `/tsconfig.json`      | `"@/*": ["./*"]` path mapping                                   |
+Virtual file system:
 
-NPM dependencies are detected from the import statements in the component and demo
-(`lib/dependencies.ts`) and installed at `latest`. `clsx` and `tailwind-merge` are
-always installed, and the `dependencies` prop overrides any detected version. Changing dependencies remounts the sandbox so it
-reinstalls.
+| File                 | Contents                                                        |
+| -------------------- | --------------------------------------------------------------- |
+| `/App.tsx`           | Renders the entry's default export, else a `*Demo` export, else the first PascalCase component export. The entry is `/Demo.tsx` when there is a demo, otherwise the component |
+| `/Demo.tsx`          | `demoCode`, when provided                                       |
+| `componentPath` file | `componentCode`, e.g. `/components/ui/pricing-table.tsx`; `/Component.tsx` when there is no demo |
+| `/lib/utils.ts`      | Shadcn `cn()` (`clsx` + `tailwind-merge`)                       |
+| `/index.tsx`         | Sets the Shadcn theme as the Tailwind config, then mounts `<App />` |
+| `/styles.css`        | Shadcn theme CSS variables                                      |
 
-Two notes on the sandbox:
-
-- Vite running in Nodebox does not auto-load `postcss.config.js`, so
-  `vite.config.ts` passes `tailwindcss()` and `autoprefixer()` through
-  `css.postcss`. Tailwind still reads `/tailwind.config.js`.
-- Vite ignores tsconfig `paths`, so the `@/` alias is set in `vite.config.ts`.
+- **Tailwind** comes from the Tailwind v3 browser build (`cdn.tailwindcss.com`, loaded
+  through Sandpack's `externalResources`). It generates classes from the rendered DOM,
+  so no PostCSS step is needed.
+- **`@/` imports** are rewritten to relative paths before the files reach the bundler.
+- **NPM dependencies** are detected from the import statements in the component and
+  demo (`lib/dependencies.ts`) and fetched at `latest`. `clsx` and `tailwind-merge` are
+  always included, and the `dependencies` prop overrides any detected version.
 
 ## Development
 
