@@ -52,13 +52,13 @@ Virtual file system:
   through Sandpack's `externalResources`, with the container-queries plugin). It generates classes from the rendered DOM,
   so no PostCSS step is needed.
 - **`@/` imports** are rewritten to relative paths before the files reach the bundler.
-- **Multi-file components** (helpers like `./blueprint-tiers-utils/types`) need their
-  21st.dev registry files. `get_component` can return them either as
-  `component.registry` (the raw item from `https://21st.dev/r/<user>/<slug>`, which
-  needs a 21st.dev API key) or as `files` / `dependencies` on the component, in shadcn
-  registry format (`[{ path, content, type, target? }]`). `lib/preview-files.ts`
-  places each file at the path the code imports it from. If imports are still
-  unresolved, the page lists the missing files instead of rendering a broken sandbox.
+- **Multi-file components** (helpers like `./blueprint-tiers-utils/types`) come from the
+  `registry` key `get_component` returns next to `component`: `registry.files`
+  (`[{ path, content, type, ... }]`, e.g. `components/ui/blueprint-tiers-utils/types.ts`)
+  and `registry.npm` (package names). `lib/preview-files.ts` places each file at the
+  path the code imports it from; files the sandbox already has (the main component,
+  `lib/utils`) are not overwritten. If imports are still unresolved, the page lists the
+  missing files instead of rendering a broken sandbox.
 - **NPM dependencies** are detected from the import statements in the component and
   demo (`lib/dependencies.ts`) and fetched at `latest`. `clsx` and `tailwind-merge` are
   always included, and the `dependencies` prop overrides any detected version.

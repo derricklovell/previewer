@@ -25,11 +25,18 @@ type ApiComponent = {
   dependencies?: string[] | null;
 };
 
-/** A raw 21st.dev registry item, if the API passes one through. */
-type RegistryItem = {
+/**
+ * The `registry` the API returns next to `component`: every file the component
+ * needs (helpers, lib/utils, registry dependencies) and its npm packages.
+ */
+type ApiRegistry = {
   files?: RegistryFile[] | null;
+  npm?: string[] | null;
   dependencies?: string[] | null;
 };
+
+// Provided by the sandbox template.
+const TEMPLATE_PACKAGES = new Set(["react", "react-dom"]);
 
 export type PreviewComponent = {
   id: number;
@@ -82,13 +89,14 @@ export async function getComponent(id: number): Promise<PreviewComponent> {
   }
 
   const body = (await response.json()) as {
-    component?: { component?: ApiComponent; registry?: RegistryItem | null };
+    component?: { component?: ApiComponent };
+    registry?: ApiRegistry | null;
   };
   const component = body.component?.component;
   if (!component?.componentCode) {
     throw new Error(`Component ${id} has no code`);
   }
-  const registry = body.component?.registry;
+  const registry = body.registry;
 
   const componentPath = resolveComponentPath(component);
   const demoCode = component.demoCode?.trim() ? component.demoCode : null;
@@ -114,6 +122,7 @@ export async function getComponent(id: number): Promise<PreviewComponent> {
     dependencies: parseDependencies([
       ...(component.dependencies ?? []),
       ...(registry?.dependencies ?? []),
+      ...(registry?.npm ?? []),
     ]),
     missingImports: findMissingImports({ ...known, ...files }),
   };
@@ -124,8 +133,8 @@ function parseDependencies(specs: string[]): Record<string, string> {
   const dependencies: Record<string, string> = {};
   for (const spec of specs) {
     const at = spec.lastIndexOf("@");
-    if (at > 0) dependencies[spec.slice(0, at)] = spec.slice(at + 1);
-    else dependencies[spec] = "latest";
+    const [name, version] = at > 0 ? [spec.slice(0, at), spec.slice(at + 1)] : [spec, "latest"];
+    if (!TEMPLATE_PACKAGES.has(name)) dependencies[name] = version;
   }
   return dependencies;
 }

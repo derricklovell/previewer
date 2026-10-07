@@ -63,18 +63,22 @@ function sharedTail(a: string, b: string): number {
 /**
  * Places registry files into the sandbox file tree. Each file goes where the
  * code imports it from (matched on the longest shared path tail), since
- * registry paths need not match the import layout. Files nothing imports fall
- * back to their `target`, or `/components/ui/<name>`.
+ * registry paths need not match the import layout. Files nothing imports keep
+ * their project path (`target`, or `path` without a leading `src/`).
  */
 export function placeRegistryFiles(
   known: Record<string, string>,
   registryFiles: RegistryFile[],
 ): Record<string, string> {
+  // Skip files the sandbox already has (the main component, lib/utils), even
+  // when the registry's copy differs from the API's.
   const knownContents = new Set(Object.values(known).map((code) => code.trim()));
+  const knownKeys = new Set(Object.keys(known).map(moduleKey));
   let pending = registryFiles.filter(
     (file) =>
       file.content?.trim() &&
       !knownContents.has(file.content.trim()) &&
+      !knownKeys.has(moduleKey(projectPath(file))) &&
       file.type !== "registry:example",
   );
   const placed: Record<string, string> = {};
@@ -84,7 +88,7 @@ export function placeRegistryFiles(
     changed = false;
     const missing = findMissingImports({ ...known, ...placed });
     for (const file of [...pending]) {
-      const key = moduleKey(normalize(file.target ?? file.path));
+      const key = moduleKey(projectPath(file));
       let best: string | null = null;
       let bestScore = 0;
       for (const need of missing) {
@@ -101,11 +105,11 @@ export function placeRegistryFiles(
     }
   }
 
-  for (const file of pending) {
-    const path = file.target
-      ? normalize(file.target)
-      : `/components/ui/${file.path.split("/").pop()}`;
-    placed[path] = file.content;
-  }
+  for (const file of pending) placed[projectPath(file)] = file.content;
   return placed;
+}
+
+/** Where a registry file lives in a project: its target, else its path minus `src/`. */
+function projectPath(file: RegistryFile): string {
+  return normalize(file.target ?? file.path).replace(/^\/src\//, "/");
 }

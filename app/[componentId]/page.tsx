@@ -70,9 +70,8 @@ function MissingFiles({ imports }: { imports: string[] }) {
         ))}
       </ul>
       <p className="mt-3 max-w-xl text-zinc-600 dark:text-zinc-400">
-        Multi-file 21st.dev components need their registry files. Return them
-        from <code>get_component</code> as <code>component.registry</code> (the
-        21st.dev registry item) or as <code>files</code> on the component.
+        Multi-file 21st.dev components need their registry files, which{" "}
+        <code>get_component</code> returns under <code>registry.files</code>.
       </p>
     </div>
   );
