@@ -16,6 +16,11 @@ export type LivePreviewProps = {
    */
   componentPath?: string;
   /**
+   * Extra files the component imports, keyed by sandbox path, e.g.
+   * `{ "/components/ui/x-utils/types.ts": "..." }`.
+   */
+  files?: Record<string, string>;
+  /**
    * NPM packages to install, e.g. `{ "lucide-react": "latest" }`. Packages
    * imported by the code are detected automatically; entries here override
    * the detected versions.

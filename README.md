@@ -49,9 +49,16 @@ Virtual file system:
 | `/styles.css`        | Shadcn theme CSS variables                                      |
 
 - **Tailwind** comes from the Tailwind v3 browser build (`cdn.tailwindcss.com`, loaded
-  through Sandpack's `externalResources`). It generates classes from the rendered DOM,
+  through Sandpack's `externalResources`, with the container-queries plugin). It generates classes from the rendered DOM,
   so no PostCSS step is needed.
 - **`@/` imports** are rewritten to relative paths before the files reach the bundler.
+- **Multi-file components** (helpers like `./blueprint-tiers-utils/types`) need their
+  21st.dev registry files. `get_component` can return them either as
+  `component.registry` (the raw item from `https://21st.dev/r/<user>/<slug>`, which
+  needs a 21st.dev API key) or as `files` / `dependencies` on the component, in shadcn
+  registry format (`[{ path, content, type, target? }]`). `lib/preview-files.ts`
+  places each file at the path the code imports it from. If imports are still
+  unresolved, the page lists the missing files instead of rendering a broken sandbox.
 - **NPM dependencies** are detected from the import statements in the component and
   demo (`lib/dependencies.ts`) and fetched at `latest`. `clsx` and `tailwind-merge` are
   always included, and the `dependencies` prop overrides any detected version.

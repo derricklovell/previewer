@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Sandpack, type SandpackFiles } from "@codesandbox/sandpack-react";
 
 import { inferDependencies } from "@/lib/dependencies";
+import { toFilePath } from "@/lib/preview-files";
 import type { LivePreviewProps } from "./LivePreview";
 
 const DEFAULT_DEPENDENCIES: Record<string, string> = {
@@ -12,8 +13,9 @@ const DEFAULT_DEPENDENCIES: Record<string, string> = {
 };
 
 // Tailwind v3 browser build: generates utility classes at runtime from the
-// rendered DOM, so the in-browser bundler needs no PostCSS step.
-const TAILWIND_CDN = "https://cdn.tailwindcss.com";
+// rendered DOM, so the in-browser bundler needs no PostCSS step. The
+// container-queries plugin adds the `@container` / `@lg:` variants.
+const TAILWIND_CDN = "https://cdn.tailwindcss.com?plugins=container-queries";
 
 // Renders the entry module's default export, falling back to a `*Demo` export
 // and then to the first PascalCase component export.
@@ -162,12 +164,6 @@ body {
 }
 `;
 
-/** `@/components/ui/x` or `/components/ui/x.tsx` → `/components/ui/x.tsx`. */
-function toFilePath(importPath: string): string {
-  const path = importPath.replace(/^@\//, "/").replace(/^(?!\/)/, "/");
-  return /\.[jt]sx?$/.test(path) ? path : `${path}.tsx`;
-}
-
 /**
  * Rewrites `@/...` imports in a file to relative paths, so the alias works
  * without bundler path-mapping support.
@@ -185,6 +181,7 @@ export default function LivePreviewSandpack({
   componentCode,
   demoCode,
   componentPath,
+  files: extraFiles,
   dependencies,
   className,
 }: LivePreviewProps) {
@@ -214,18 +211,28 @@ export default function LivePreviewSandpack({
             },
           }
         : {}),
+      ...Object.fromEntries(
+        Object.entries(extraFiles ?? {}).map(([path, code]) => [
+          path,
+          { code: resolveAliases(code, path), hidden: true },
+        ]),
+      ),
       "/lib/utils.ts": { code: UTILS_TS, hidden: true },
       "/styles.css": { code: STYLES_CSS, hidden: true },
     };
-  }, [componentCode, demoCode, componentPath]);
+  }, [componentCode, demoCode, componentPath, extraFiles]);
 
   const mergedDependencies = useMemo(
     () => ({
       ...DEFAULT_DEPENDENCIES,
-      ...inferDependencies(componentCode, demoCode ?? undefined),
+      ...inferDependencies(
+        componentCode,
+        demoCode ?? undefined,
+        ...Object.values(extraFiles ?? {}),
+      ),
       ...dependencies,
     }),
-    [componentCode, demoCode, dependencies],
+    [componentCode, demoCode, extraFiles, dependencies],
   );
 
   // Changing dependencies requires the bundler to fetch new packages, so

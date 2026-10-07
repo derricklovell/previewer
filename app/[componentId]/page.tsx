@@ -42,13 +42,39 @@ async function ComponentPreview({
   return (
     <>
       <Header id={id} component={component} />
-      <LivePreview
-        className="min-h-0 flex-1"
-        componentCode={component.componentCode}
-        demoCode={component.demoCode}
-        componentPath={component.componentPath}
-      />
+      {component.missingImports.length > 0 ? (
+        <MissingFiles imports={component.missingImports} />
+      ) : (
+        <LivePreview
+          className="min-h-0 flex-1"
+          componentCode={component.componentCode}
+          demoCode={component.demoCode}
+          componentPath={component.componentPath}
+          files={component.files}
+          dependencies={component.dependencies}
+        />
+      )}
     </>
+  );
+}
+
+function MissingFiles({ imports }: { imports: string[] }) {
+  return (
+    <div className="p-6 text-sm">
+      <p className="font-semibold text-red-600">
+        This component imports files the component API did not return:
+      </p>
+      <ul className="mt-2 list-disc pl-5 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+        {imports.map((path) => (
+          <li key={path}>{path}</li>
+        ))}
+      </ul>
+      <p className="mt-3 max-w-xl text-zinc-600 dark:text-zinc-400">
+        Multi-file 21st.dev components need their registry files. Return them
+        from <code>get_component</code> as <code>component.registry</code> (the
+        21st.dev registry item) or as <code>files</code> on the component.
+      </p>
+    </div>
   );
 }
 
