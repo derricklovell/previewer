@@ -4,6 +4,14 @@ Live component previewer for raw TSX strings (Shadcn/Tailwind components with
 ESM imports and NPM dependencies), powered by CodeSandbox
 [Sandpack](https://sandpack.codesandbox.io/) on the `vite-react-ts` template.
 
+## Routes
+
+- `/<componentId>` fetches the component from the 1ovr1 `21st_dev_mcp/get_component`
+  API on the server (cached for hours) and previews it the way 21st.dev does: the
+  component's `demoCode` is rendered, and `componentCode` is placed at the path the
+  demo imports it from (e.g. `@/components/ui/pricing-table`).
+- `/` redirects to the default component, `/8374`.
+
 ## Usage
 
 ```tsx
@@ -11,8 +19,10 @@ import { LivePreview } from "@/components/LivePreview";
 
 <LivePreview
   className="h-[600px]"
-  componentCode={code} // TSX string from the API
-  dependencies={{ "lucide-react": "latest" }}
+  componentCode={component.componentCode}
+  demoCode={component.demoCode} // optional: rendered instead of the component
+  componentPath="@/components/ui/pricing-table" // where the demo imports it from
+  dependencies={{ "lucide-react": "^0.400.0" }} // optional: overrides detected versions
 />;
 ```
 
@@ -26,8 +36,9 @@ this virtual file system:
 
 | File                  | Contents                                                        |
 | --------------------- | --------------------------------------------------------------- |
-| `/App.tsx`            | Renders `/Component.tsx`'s default export, else a `*Demo` export, else the first PascalCase component export |
-| `/Component.tsx`      | `componentCode`                                                 |
+| `/App.tsx`            | Renders the entry's default export, else a `*Demo` export, else the first PascalCase component export. The entry is `/Demo.tsx` when there is a demo, otherwise the component |
+| `/Demo.tsx`           | `demoCode`, when provided                                      |
+| `componentPath` file  | `componentCode`, e.g. `/components/ui/pricing-table.tsx`; `/Component.tsx` when there is no demo |
 | `/lib/utils.ts`       | Shadcn `cn()` (`clsx` + `tailwind-merge`)                       |
 | `/styles.css`         | `@tailwind` directives + Shadcn theme CSS variables             |
 | `/tailwind.config.js` | Tailwind v3 config with the Shadcn color tokens                 |
@@ -35,8 +46,9 @@ this virtual file system:
 | `/vite.config.ts`     | `@` → project root alias, and PostCSS plugins passed inline     |
 | `/tsconfig.json`      | `"@/*": ["./*"]` path mapping                                   |
 
-`clsx` and `tailwind-merge` are always installed; the `dependencies` prop is merged
-on top (and overrides them). Changing dependencies remounts the sandbox so it
+NPM dependencies are detected from the import statements in the component and demo
+(`lib/dependencies.ts`) and installed at `latest`. `clsx` and `tailwind-merge` are
+always installed, and the `dependencies` prop overrides any detected version. Changing dependencies remounts the sandbox so it
 reinstalls.
 
 Two notes on the sandbox:

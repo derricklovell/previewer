@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Sandpack, type SandpackFiles } from "@codesandbox/sandpack-react";
 
+import { inferDependencies } from "@/lib/dependencies";
 import type { LivePreviewProps } from "./LivePreview";
 
 const DEFAULT_DEPENDENCIES: Record<string, string> = {
@@ -18,9 +19,9 @@ const DEV_DEPENDENCIES: Record<string, string> = {
   "tailwindcss-animate": "^1.0.7",
 };
 
-// Renders the default export of /Component.tsx, falling back to a `*Demo`
-// export and then to the first PascalCase component export.
-const APP_TSX = `import * as Module from "./Component";
+// Renders the entry module's default export, falling back to a `*Demo` export
+// and then to the first PascalCase component export.
+const appTsx = (entry: string) => `import * as Module from "${entry}";
 
 type AnyComponent = React.ComponentType<Record<string, unknown>>;
 
@@ -45,7 +46,7 @@ export default function App() {
   if (!Target) {
     return (
       <p className="p-4 text-sm text-red-500">
-        No React component export found in Component.tsx
+        No React component export found in ${entry}
       </p>
     );
   }
@@ -129,7 +130,12 @@ const STYLES_CSS = `@tailwind base;
 const TAILWIND_CONFIG_JS = `/** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  content: ["./index.html", "./*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
+  content: [
+    "./index.html",
+    "./*.{ts,tsx}",
+    "./lib/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
@@ -239,28 +245,50 @@ const TSCONFIG_JSON = JSON.stringify(
   2,
 );
 
+/** `@/components/ui/x` or `/components/ui/x.tsx` → `/components/ui/x.tsx`. */
+function toFilePath(importPath: string): string {
+  const path = importPath.replace(/^@\//, "/").replace(/^(?!\/)/, "/");
+  return /\.[jt]sx?$/.test(path) ? path : `${path}.tsx`;
+}
+
 export default function LivePreviewSandpack({
   componentCode,
-  dependencies = {},
+  demoCode,
+  componentPath,
+  dependencies,
   className,
 }: LivePreviewProps) {
-  const files = useMemo<SandpackFiles>(
-    () => ({
-      "/App.tsx": { code: APP_TSX, hidden: true },
-      "/Component.tsx": { code: componentCode, active: true },
+  const files = useMemo<SandpackFiles>(() => {
+    // With a demo, the component lives where the demo imports it from and the
+    // demo is what gets rendered, as on 21st.dev.
+    const componentFile = toFilePath(
+      componentPath ?? (demoCode ? "@/components/ui/component" : "/Component"),
+    );
+    const entryFile = demoCode ? "/Demo.tsx" : componentFile;
+
+    return {
+      "/App.tsx": {
+        code: appTsx(`.${entryFile.replace(/\.[jt]sx?$/, "")}`),
+        hidden: true,
+      },
+      [componentFile]: { code: componentCode, active: !demoCode },
+      ...(demoCode ? { "/Demo.tsx": { code: demoCode, active: true } } : {}),
       "/lib/utils.ts": { code: UTILS_TS, hidden: true },
       "/styles.css": { code: STYLES_CSS, hidden: true },
       "/tailwind.config.js": { code: TAILWIND_CONFIG_JS, hidden: true },
       "/postcss.config.js": { code: POSTCSS_CONFIG_JS, hidden: true },
       "/vite.config.ts": { code: VITE_CONFIG_TS, hidden: true },
       "/tsconfig.json": { code: TSCONFIG_JSON, hidden: true },
-    }),
-    [componentCode],
-  );
+    };
+  }, [componentCode, demoCode, componentPath]);
 
   const mergedDependencies = useMemo(
-    () => ({ ...DEFAULT_DEPENDENCIES, ...dependencies }),
-    [dependencies],
+    () => ({
+      ...DEFAULT_DEPENDENCIES,
+      ...inferDependencies(componentCode, demoCode ?? undefined),
+      ...dependencies,
+    }),
+    [componentCode, demoCode, dependencies],
   );
 
   // Changing dependencies requires a fresh `npm install` in the sandbox, so

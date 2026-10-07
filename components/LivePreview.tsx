@@ -3,9 +3,23 @@
 import dynamic from "next/dynamic";
 
 export type LivePreviewProps = {
-  /** Raw TSX source of the component to render. */
+  /** Raw TSX source of the component. */
   componentCode: string;
-  /** NPM packages the component needs, e.g. `{ "lucide-react": "latest" }`. */
+  /**
+   * Optional 21st.dev-style demo that imports the component and is rendered
+   * instead of it, e.g. `import X from "@/components/ui/pricing-table"`.
+   */
+  demoCode?: string | null;
+  /**
+   * Import path the demo uses for the component (`@/components/ui/<slug>`).
+   * Without a demo, the component is written to `/Component.tsx`.
+   */
+  componentPath?: string;
+  /**
+   * NPM packages to install, e.g. `{ "lucide-react": "latest" }`. Packages
+   * imported by the code are detected automatically; entries here override
+   * the detected versions.
+   */
   dependencies?: Record<string, string>;
   /** Classes for the outer wrapper. The preview fills this element. */
   className?: string;
