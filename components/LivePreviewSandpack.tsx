@@ -50,7 +50,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-background p-6 text-foreground">
+    <div className="flex min-h-screen w-full items-center justify-center bg-background text-foreground">
       <Target />
     </div>
   );
@@ -264,6 +264,8 @@ export default function LivePreviewSandpack({
             "sp-wrapper": "!h-full",
             "sp-layout": "!h-full !rounded-none !border-0",
             "sp-editor": "!hidden",
+            // Refresh and "Open Sandbox" buttons over the preview.
+            "sp-preview-actions": "!hidden",
           },
         }}
       />
