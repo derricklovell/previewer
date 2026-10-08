@@ -1,14 +1,19 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 
-import { ComponentSwitcher } from "@/components/ComponentSwitcher";
 import { LivePreview } from "@/components/LivePreview";
 import { getComponent, type PreviewComponent } from "@/lib/twentyfirst";
 
 export default function ComponentPage({ params }: PageProps<"/[componentId]">) {
   return (
     <main className="flex h-screen flex-col">
-      <Suspense fallback={<Header />}>
+      <Suspense
+        fallback={
+          <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
+            Loading…
+          </div>
+        }
+      >
         <ComponentPreview params={params} />
       </Suspense>
     </main>
@@ -29,32 +34,26 @@ async function ComponentPreview({
     component = await getComponent(id);
   } catch (error) {
     return (
-      <>
-        <Header id={id} />
-        <p className="p-6 text-sm text-red-600">
-          Could not load component {id}:{" "}
-          {error instanceof Error ? error.message : "unknown error"}
-        </p>
-      </>
+      <p className="p-6 text-sm text-red-600">
+        Could not load component {id}:{" "}
+        {error instanceof Error ? error.message : "unknown error"}
+      </p>
     );
   }
 
+  if (component.missingImports.length > 0) {
+    return <MissingFiles imports={component.missingImports} />;
+  }
+
   return (
-    <>
-      <Header id={id} component={component} />
-      {component.missingImports.length > 0 ? (
-        <MissingFiles imports={component.missingImports} />
-      ) : (
-        <LivePreview
-          className="min-h-0 flex-1"
-          componentCode={component.componentCode}
-          demoCode={component.demoCode}
-          componentPath={component.componentPath}
-          files={component.files}
-          dependencies={component.dependencies}
-        />
-      )}
-    </>
+    <LivePreview
+      className="min-h-0 flex-1"
+      componentCode={component.componentCode}
+      demoCode={component.demoCode}
+      componentPath={component.componentPath}
+      files={component.files}
+      dependencies={component.dependencies}
+    />
   );
 }
 
@@ -74,21 +73,5 @@ function MissingFiles({ imports }: { imports: string[] }) {
         <code>get_component</code> returns under <code>registry.files</code>.
       </p>
     </div>
-  );
-}
-
-function Header({ id, component }: { id?: number; component?: PreviewComponent }) {
-  return (
-    <header className="flex items-center justify-between gap-4 border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
-      <div className="min-w-0">
-        <h1 className="truncate text-sm font-semibold">
-          {component?.name ?? "Loading component…"}
-        </h1>
-        {component?.description && (
-          <p className="truncate text-xs text-zinc-500">{component.description}</p>
-        )}
-      </div>
-      <ComponentSwitcher currentId={id} />
-    </header>
   );
 }
